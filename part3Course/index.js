@@ -1,11 +1,30 @@
 const express = require('express')
 const cors = require('cors')
+const mongoose = require('mongoose')
+
 const app = express()
 
 app.use(express.static('dist'))
 app.use(cors())
 app.use(express.json())
 
+const password = process.argv[2]
+
+// DO NOT SAVE YOUR PASSWORD TO GITHUB!!
+const url =
+`mongodb+srv://fullstack:${password}@fullstackopen.k76voap.mongodb.net/?retryWrites=true&w=majority&appName=fullstackopen`
+
+
+
+mongoose.set('strictQuery',false)
+mongoose.connect(url)
+
+const noteSchema = new mongoose.Schema({
+  content: String,
+  important: Boolean,
+})
+
+const Note = mongoose.model('Note', noteSchema)
 let notes = [
   {
     id: 1,
@@ -22,13 +41,6 @@ let notes = [
     content: "GET and POST are the most important methods of HTTP protocol",
     important: true
   },
-  
-//   {
-//     id: 4,
-//     content: "test",
-//     important: true
-//   }
-  
 ]
 
 const requestLogger = (request, response, next) => {
@@ -45,7 +57,9 @@ app.get('/', (request, response) => {
 })
 
 app.get('/api/notes', (request, response) => {
-    response.json(notes)
+    Note.find({}).then(notes => {
+      response.json(notes)
+    })
 })
 
 app.get('/api/notes/:id', (request, response) => {
