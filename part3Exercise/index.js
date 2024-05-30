@@ -9,8 +9,6 @@ app.use(express.static('dist'))
 app.use(cors())
 app.use(express.json())
 
-let phonebook = []
-
 morgan.token('data', (req,res) => JSON.stringify(req.body))
 app.use(morgan((tokens, req, res) => {
   return [
@@ -38,58 +36,77 @@ app.get('/api/info', (request, response) => {
     
     const requestTime = new Date()
     const formattedDate = `${requestTime.toDateString()} ${requestTime.toTimeString()} GMT${requestTime.getTimezoneOffset() > 0 ? '-' : '+'}${Math.abs(requestTime.getTimezoneOffset() / 60).toString().padStart(2, '0')}00 (${requestTime.toString().match(/\((.*)\)/)[1]})`;
+    Phonebook.find({})
+      .then(entries => {
+          response.send(`<p>Phonebook as info for ${entries.length} people</p>` +`<p>${formattedDate}</p>`)  
+      })
 
-    response.send(
-        `<p>Phonebook as info for ${phonebook.length} people</p>` +
-        `<p>${formattedDate}</p>`
-    )
 })
 
-app.get('/api/persons/:id', (req, res) => {
-    const reqId = Number(req.params.id)
-    const phoneEntry = phonebook.find(entry => entry.id === reqId)
-    if (!phoneEntry) {
-        res.status(404).end()
-    }
-
-    res.json(phoneEntry)
+app.get('/api/persons/:id', (req, res, next) => {
+    Phonebook.findById(req.params.id)
+      .then(entry => {
+        if (entry) {
+          res.json(entry)
+        } else {
+          res.status(404).end()
+        }
+      })
+      .catch(error => next(error))
+      
 })
 
 app.delete('/api/persons/:id', (req, res) => {
-  const reqId = Number(req.params.id)
-  const phoneEntry = Phonebook.find(entry => entry.id ===reqId)
+  Phonebook.findByIdAndDelete(req.params.id)
+    .then(() => res.status(204).end())
+})
 
-  if (!phoneEntry) {
-    res.status(404).end()
-  }
+app.post('/api/persons', (req, res, next) => {
 
-  phonebook = phonebook.filter(entry => entry.id !== reqId)
-  res.json(phonebook)
+  const newEntry = new Phonebook({
+      name: req.body.name,
+      number: req.body.number
+  })
+
+  newEntry.save()
+    .then(savedEntry => {
+      return res.json(savedEntry)
+    })
+    .catch(error => next(error))
 
 })
 
-app.post('/api/persons', (req, res) => {
-  const newEntry = req.body
+app.put('/api/persons/:id', (req,res, next) => {
+  const {name, number} = req.body
 
-  if(!newEntry.name || !newEntry.number){
-    return res.status(400).json({
-      error: 'missing content'
+  Phonebook.findByIdAndUpdate(
+    req.params.id,
+    {name, number},
+    {new: true, runValidators: true, context: 'query'}
+  )
+    .then(entry => {
+      console.log(entry)
+      res.json(entry)
     })
-  }
-
-  const phonebookNames = phonebook.map(entry => entry.name)
-
-  if (phonebookNames.includes(newEntry.name)){
-    return res.status(400).json({
-      'error': 'name must be unique'
-    })
-  }
-
-  newEntry.id = Math.floor(100000000 * Math.random())
-  phonebook = phonebook.concat(newEntry)
-  
-  res.json(phonebook)
+    .catch(error => next(error))
 })
+
+const unknownEndpoint = (req, res) => {
+  res.status(400).send({error: "unknown endpoint" })
+}
+app.use(unknownEndpoint)
+
+const errorHandler = (error, req, res, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return res.status(400).send({error: 'malformatted id'})
+  } else if (error.name === 'ValidationError') {
+    return res.status(400).send({error: error.message})
+  }
+  next(error)
+}
+app.use(errorHandler)
 
 const PORT = process.env.PORT
 app.listen(PORT, ()=> {
