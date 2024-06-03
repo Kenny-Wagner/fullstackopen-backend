@@ -21,7 +21,7 @@ const requestLogger = (request, response, next) => {
 app.use(requestLogger)
 
 app.get('/', (request, response) => {
-    response.send('<h1>Hello World!</h1>')
+  response.send('<h1>Hello World!</h1>')
 })
 
 app.get('/api/notes', (request, response) => {
@@ -74,8 +74,8 @@ app.put('/api/notes/:id', (request, response, next) => {
 
   Note.findByIdAndUpdate(
     request.params.id,
-     {content, important},
-     {new: true, runValidators: true, context: 'query'}
+    {content, important},
+    {new: true, runValidators: true, context: 'query'}
   )
     .then(updatedNote => {
       console.log(updatedNote)

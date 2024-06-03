@@ -22,11 +22,11 @@ app.use(morgan((tokens, req, res) => {
 }))
 
 app.get('/', (request, response) => {
-    response.send('<h1>Phonebook Backend </h1>')
+  response.send('<h1>Phonebook Backend </h1>')
 })
 
 app.get('/api/persons', (request, response) => {
-    Phonebook.find({})
+  Phonebook.find({})
     .then( phonebook => {
       response.json(phonebook)
     })
@@ -34,25 +34,25 @@ app.get('/api/persons', (request, response) => {
 
 app.get('/api/info', (request, response) => {
     
-    const requestTime = new Date()
-    const formattedDate = `${requestTime.toDateString()} ${requestTime.toTimeString()} GMT${requestTime.getTimezoneOffset() > 0 ? '-' : '+'}${Math.abs(requestTime.getTimezoneOffset() / 60).toString().padStart(2, '0')}00 (${requestTime.toString().match(/\((.*)\)/)[1]})`;
-    Phonebook.find({})
-      .then(entries => {
-          response.send(`<p>Phonebook as info for ${entries.length} people</p>` +`<p>${formattedDate}</p>`)  
-      })
+  const requestTime = new Date()
+  const formattedDate = `${requestTime.toDateString()} ${requestTime.toTimeString()} GMT${requestTime.getTimezoneOffset() > 0 ? '-' : '+'}${Math.abs(requestTime.getTimezoneOffset() / 60).toString().padStart(2, '0')}00 (${requestTime.toString().match(/\((.*)\)/)[1]})`
+  Phonebook.find({})
+    .then(entries => {
+      response.send(`<p>Phonebook as info for ${entries.length} people</p>` +`<p>${formattedDate}</p>`)  
+    })
 
 })
 
 app.get('/api/persons/:id', (req, res, next) => {
-    Phonebook.findById(req.params.id)
-      .then(entry => {
-        if (entry) {
-          res.json(entry)
-        } else {
-          res.status(404).end()
-        }
-      })
-      .catch(error => next(error))
+  Phonebook.findById(req.params.id)
+    .then(entry => {
+      if (entry) {
+        res.json(entry)
+      } else {
+        res.status(404).end()
+      }
+    })
+    .catch(error => next(error))
       
 })
 
@@ -64,8 +64,8 @@ app.delete('/api/persons/:id', (req, res) => {
 app.post('/api/persons', (req, res, next) => {
 
   const newEntry = new Phonebook({
-      name: req.body.name,
-      number: req.body.number
+    name: req.body.name,
+    number: req.body.number
   })
 
   newEntry.save()
@@ -92,7 +92,7 @@ app.put('/api/persons/:id', (req,res, next) => {
 })
 
 const unknownEndpoint = (req, res) => {
-  res.status(400).send({error: "unknown endpoint" })
+  res.status(400).send({error: 'unknown endpoint' })
 }
 app.use(unknownEndpoint)
 
@@ -111,4 +111,4 @@ app.use(errorHandler)
 const PORT = process.env.PORT
 app.listen(PORT, ()=> {
   console.log(`Server running on port ${PORT}`)
-  })
+})

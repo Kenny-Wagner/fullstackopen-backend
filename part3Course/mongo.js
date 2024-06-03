@@ -27,11 +27,11 @@ const note = new Note({
 })
 
 Note.find({}).then(result => {
-    result.forEach(note => {
-        console.log(note)
-    })
+  result.forEach(note => {
+    console.log(note)
+  })
 
-    mongoose.connection.close()
+  mongoose.connection.close()
 })
 
 // note.save().then(result => {

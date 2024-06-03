@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "lint": "eslint .",
     "test": "echo \"Error: no test specified\" && exit 1",
     "tunnel": "lt --port 3001",
     "build:ui": "rm -rf dist && cd ../../fullstackopen/part2/preexercise && npm run build && cp -r dist ../../../fullstackopen-backend/part3Course",
@@ -21,6 +22,11 @@
     "mongoose": "^8.4.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.3.0",
+    "@stylistic/eslint-plugin-js": "^2.1.0",
+    "eslint": "^9.3.0",
+    "eslint-formatter-unix": "^8.40.0",
+    "globals": "^15.3.0",
     "nodemon": "^3.1.0"
   }
 }

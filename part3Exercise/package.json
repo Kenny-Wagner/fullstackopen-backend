@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "lint": "eslint .",
     "tunnel": "lt --port 3001",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:ui": "rm -rf dist && cd ../../fullstackopen/part2/phonebook && npm run build && cp -r dist ../../../fullstackopen-backend/part3Exercise && cd ../../../fullstackopen-backend/part3Exercise",
@@ -29,6 +30,8 @@
     "morgan": "^1.10.0"
   },
   "devDependencies": {
+    "@stylistic/eslint-plugin-js": "^2.1.0",
+    "eslint": "^9.4.0",
     "nodemon": "^3.1.0"
   }
 }

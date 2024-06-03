@@ -28,20 +28,20 @@ const phonebookEntry = new Phonebook({
 
 if (process.argv.length < 5) {
 
-    Phonebook.find({}).then(result => {
-        result.forEach(entry => {
-            console.log(entry)
-        })
+  Phonebook.find({}).then(result => {
+    result.forEach(entry => {
+      console.log(entry)
+    })
 
     mongoose.connection.close()
-    })
+  })
 }
 
 else {
-    phonebookEntry.save().then(result => {
-        console.log('phonebook entry saved!')
-        mongoose.connection.close()
-    })
+  phonebookEntry.save().then(result => {
+    console.log('phonebook entry saved!')
+    mongoose.connection.close()
+  })
 }
 
 
