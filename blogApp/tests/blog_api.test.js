@@ -1,135 +1,215 @@
-const { test, after, beforeEach } = require('node:test')
-const assert = require('node:assert')
-const mongoose = require('mongoose')
 const supertest = require('supertest')
+const mongoose = require('mongoose')
+const { test, describe, after, beforeEach } = require('node:test')
 const app = require('../app')
-const Blog = require('../models/blog')
-const helper = require('./test_helper')
 const api = supertest(app)
+const helper = require('./test_helper')
+const assert = require('assert')
 
-beforeEach( async () => {
+const Blog = require('../models/blog')
+const User = require('../models/user')
 
- await Blog.deleteMany({})
+const testUser = {
+  username: "testuser",
+  name: "Test User",
+  password: "password"
+}
 
- const blogObjects = helper.initialBlogs.map((blog) => new Blog(blog))
+let token
 
- const promiseArray = blogObjects.map((blog) => blog.save())
+describe('when there is initially some blogs saved', () => {
+  beforeEach(async () => {
+    await Blog.deleteMany({})
+    await User.deleteMany({})
 
- await Promise.all(promiseArray)
-})
+    const blogObjects = helper.initialBlogs
+      .map(blog => new Blog(blog))
 
-test('blogs are returned as json', async () => {
-  const response = await api
-    .get('/api/blogs')
-    .expect(200)
-    .expect('Content-Type', /application\/json/)
-  
-  assert.strictEqual(response.body.length, helper.initialBlogs.length)
+    const promiseArray = blogObjects.map(blog => blog.save())
+    await Promise.all(promiseArray)
 
-})
+    await api
+      .post('/api/users')
+      .send(testUser)
 
-test('blogs formatted correctly', async () => {
-  const response = await api
-    .get('/api/blogs')
-    .expect(200)
-    .expect('Content-Type', /application\/json/)
-  
-  const blogObjects = response.body.map((blog) => blog)
-  blogObjects.forEach((blog) => assert(Object.keys(blog).includes("id")))
-})
+    const response = await api
+      .post('/api/login')
+      .send(testUser)
 
-test('new blog successfully added to db', async () => {
-  const newBlog =  {
-    title: "Test Title",
-    author: "test name",
-    url: "www.testurl.com",
-    likes: 5,
-  }
+    token = response.body.token
+  })
 
-   await api
-    .post('/api/blogs')
-    .send(newBlog)
-    .expect(201)
-    .expect('Content-Type', /application\/json/)
-  
-    const updatedDb = await api
+  test('blogs are returned as json', async () => {
+    const response = await api
       .get('/api/blogs')
       .expect(200)
       .expect('Content-Type', /application\/json/)
+
+    assert.strictEqual(response.body.length, helper.initialBlogs.length)
+  })
+
+  test('blogs are returned with id property', async () => {
+    const response = await api.get('/api/blogs')
+    response.body.forEach(blog => {
+      assert(blog.id)
+    })
+  })
+
+  test('a valid blog can be added ', async () => {
+    const newBlog = {
+      title: "New Blog",
+      author: "New Author",
+      url: "http://example.com/new",
+      likes: 5
+    }
+
+    const postResponse = await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .expect(201)
+      .expect('Content-Type', /application\/json/)
+      .set('Authorization', `Bearer ${token}`)
   
-    assert.strictEqual(updatedDb.body.length, helper.initialBlogs.length+1)
-})
-
-
-test('Blog without likes is added with 0 likes', async () => {
-  const newBlog =  {
-    title: "Test Title",
-    author: "test name",
-    url: "www.testurl.com"
-  }
-
-   const newBlogResponse = await api
-    .post('/api/blogs')
-    .send(newBlog)
-    .expect(201)
-    .expect('Content-Type', /application\/json/)
+    assert.strictEqual(postResponse.body.title, newBlog.title)
+    assert.strictEqual(postResponse.body.author, newBlog.author)
+    assert.strictEqual(postResponse.body.url, newBlog.url)
+    assert.strictEqual(postResponse.body.likes, newBlog.likes)
   
-    assert.strictEqual(newBlogResponse.body.likes, 0)
-})
+    await api.get('/api/blogs')
 
-
-test('New blog without title returns bad request', async () => {
-  const newBlog =  {
-    author: "test name",
-    url: "www.testurl.com",
-    likes: 3
-  }
-
-  await api
-    .post('/api/blogs')
-    .send(newBlog)
-    .expect(400)
-    .expect('Content-Type', /application\/json/)
-})
-
-test('New blog without url returns bad request', async () => {
-  const newBlog =  {
-    title: "Test Title",
-    author: "test name",
-    likes: 3
-  }
-
-  await api
-    .post('/api/blogs')
-    .send(newBlog)
-    .expect(400)
-    .expect('Content-Type', /application\/json/)
-})
-
-
-test('Blog successfully deleted from database', async () => {
-  const blogs = await helper.blogsInDb()
-  await api
-    .delete(`/api/blogs/${blogs[0].id}`)
-    .expect(204)
+    const blogsAtEnd = await helper.blogsInDb()
   
-  await api
-    .get(`/api/blogs/${blogs[0].id}`)
-    .expect(404)
-})
+    const titles = blogsAtEnd.map(blog => blog.title)
 
-test('Blog successfully updated in database', async () => {
-  const blogs = await helper.blogsInDb()
-  let updatedBlog = blogs[0]
-  updatedBlog.likes++
-  const updatedResponse = await api
-    .put(`/api/blogs/${updatedBlog.id}`)
-    .send(updatedBlog)
-    .expect(200)
-    .expect('Content-Type', /application\/json/)
+    assert(titles.includes('New Blog'))
+  })
+
+  test('if likes property is missing, it will default to 0', async () => {
+    const newBlog = {
+      title: "New Blog",
+      author: "New Author",
+      url: "http://example.com/new",
+    }
   
-    assert.strictEqual(updatedResponse.body.likes, updatedBlog.likes)
-})
-after(async () => {
-  await mongoose.connection.close()
+    const postResponse = await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(201)
+      .expect('Content-Type', /application\/json/)
+  
+    assert.strictEqual(postResponse.body.likes, 0)
+  })
+
+  test('blog without title is not added', async () => {
+    const newBlog = {
+      author: "New Author",
+      url: "http://example.com/new",
+      likes: 5
+    }
+
+    await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400)
+
+    const blogsAtEnd = await helper.blogsInDb()
+
+    assert.strictEqual(blogsAtEnd.length, helper.initialBlogs.length)
+  })
+
+  test('a valid blog is not added without a token', async () => {
+    const newBlog = {
+      title: "New Blog",
+      author: "New Author",
+      url: "http://example.com/new",
+      likes: 5
+    }
+
+    const postResponse = await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .expect(401)
+
+  })
+
+  test('blog without url is not added', async () => {
+    const newBlog = {
+      title: "New Blog",
+      author: "New Author",
+      likes: 5
+    }
+
+    await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400)
+
+    const blogsAtEnd = await helper.blogsInDb()
+
+    assert.strictEqual(blogsAtEnd.length, helper.initialBlogs.length)
+  })
+
+  test('a blog can be deleted', async () => {
+    const blogToDelete = {
+      title: "New Blog",
+      author: "New Author",
+      url: "http://example.com/new",
+      likes: 5
+    }
+
+    const response = await api
+      .post('/api/blogs')
+      .send(blogToDelete)
+      .set('Authorization', `Bearer ${token}`)
+
+    const id = response.body.id
+
+    const blogsAtStart = await helper.blogsInDb()
+
+    await api
+      .delete(`/api/blogs/${id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(204)
+  
+    const blogsAtEnd = await helper.blogsInDb()
+  
+    assert.strictEqual(blogsAtEnd.length, blogsAtStart.length - 1)
+  
+    const titles = blogsAtEnd.map(r => r.title)
+  
+    assert(!titles.includes(blogToDelete.title))
+  })
+
+  test('a blog can be updated', async () => {
+    const blogsAtStart = await helper.blogsInDb()
+    const blogToUpdate = blogsAtStart[0]
+  
+    const newBlog = {
+      title: "Updated Blog",
+      author: "Updated Author",
+      url: "http://example.com/updated",
+      likes: 10
+    }
+  
+    await api
+      .put(`/api/blogs/${blogToUpdate.id}`)
+      .send(newBlog)
+      .expect(200)
+  
+    const blogsAtEnd = await helper.blogsInDb()
+  
+    const updatedBlog = blogsAtEnd.find(blog => blog.id === blogToUpdate.id)
+  
+    assert.strictEqual(updatedBlog.title, newBlog.title)
+    assert.strictEqual(updatedBlog.author, newBlog.author)
+    assert.strictEqual(updatedBlog.url, newBlog.url)
+    assert.strictEqual(updatedBlog.likes, newBlog.likes)
+  })
+
+  after(() => {
+    mongoose.connection.close()
+  })
 })
